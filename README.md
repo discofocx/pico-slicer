@@ -1,1 +1,1 @@
-# pico-slicer
+# Pico-Slicer
