@@ -11,6 +11,7 @@ import numpy
 from PyCara import PyPico
 from timecode import Timecode
 
+
 class PicoFile(object):
     def __init__(self, file_path):
         """
@@ -32,7 +33,6 @@ class PicoFile(object):
         self.frame_offset = None
         self.frame_start = None
         self.frame_padding = None
-
 
     def _read(self):
         """
