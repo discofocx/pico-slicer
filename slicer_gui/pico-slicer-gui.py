@@ -14,7 +14,7 @@ import PyQt5.QtCore as qc
 import PyQt5.QtGui as qg
 import PyQt5.QtWidgets as qw
 
-from slicer_ops import pico_processing
+from PicoSlicer import CyPico
 
 # - Globals - #
 gDIALOG = None
@@ -71,8 +71,12 @@ class PicoTrack(qw.QFrame):
         self.setLayout(qw.QVBoxLayout())
 
         # ------ Attributes ------- #
-        self.pico = None
+        self.pico = CyPico.PicoFile()
 
+        # ------ GUI ------ #
+        self._draw()
+
+    def _draw(self):
         # ------ Track Header ------ #
         self.header = PicoTrackHeader('TRACK')
         self.layout().addWidget(self.header)
@@ -81,7 +85,6 @@ class PicoTrack(qw.QFrame):
         browse_lyt = qw.QHBoxLayout()
         browse_lyt.setContentsMargins(0, 0, 0, 0)
         browse_lyt.setSpacing(4)
-
         pico_lbl = qw.QLabel()
         pico_lbl.setText('Source:   ')
         self.pico_le = qw.QLineEdit()
@@ -89,18 +92,15 @@ class PicoTrack(qw.QFrame):
         self.pico_le.setPlaceholderText('Browse for a .pico file...')
         self.pico_btn = qw.QPushButton()
         self.pico_btn.setText('Browse')
-
         browse_lyt.addWidget(pico_lbl)
         browse_lyt.addWidget(self.pico_le)
         browse_lyt.addWidget(self.pico_btn)
-
         self.layout().addLayout(browse_lyt)
 
         # ------ Override Save ------ #
         override_lyt = qw.QHBoxLayout()
         override_lyt.setContentsMargins(0, 0, 0, 0)
         override_lyt.setSpacing(4)
-
         override_lbl = qw.QLabel()
         override_lbl.setText('Override:')
         self.override_le = qw.QLineEdit()
@@ -109,11 +109,9 @@ class PicoTrack(qw.QFrame):
         self.override_btn = qw.QPushButton()
         self.override_btn.setText('Set New')
         self.override_btn.setEnabled(False)
-
         override_lyt.addWidget(override_lbl)
         override_lyt.addWidget(self.override_le)
         override_lyt.addWidget(self.override_btn)
-
         self.layout().addLayout(override_lyt)
 
         # ------ Render Length ------ #
@@ -124,26 +122,30 @@ class PicoTrack(qw.QFrame):
         progress_lyt = qw.QHBoxLayout()
         progress_lyt.setContentsMargins(0, 0, 0, 0)
         progress_lyt.setSpacing(0)
-
         self.progress_bar = qw.QProgressBar()
-        self.progress_btn = qw.QPushButton()
-        self.progress_btn.setText('Run')
-        self.progress_btn.setEnabled(False)
-        self.progress_btn.clicked.connect(self._download)
-
+        self.check_btn = qw.QPushButton()
+        self.check_btn.setText('Check')
+        self.check_btn.setEnabled(False)
+        self.check_btn.setMaximumWidth(self.check_btn.fontMetrics().boundingRect('Check').width() + 24)
+        self.run_btn = qw.QPushButton()
+        self.run_btn.setText('Run')
+        self.run_btn.setEnabled(False)
+        self.run_btn.setMaximumWidth(self.run_btn.fontMetrics().boundingRect('Check').width() + 24)
+        self.run_btn.clicked.connect(self._download)
         progress_lyt.addWidget(self.progress_bar)
-        progress_lyt.addWidget(self.progress_btn)
-
+        progress_lyt.addWidget(self.check_btn)
+        progress_lyt.addWidget(self.run_btn)
         self.layout().addLayout(progress_lyt)
 
-#         # ------ Connections ------ #
+        # ------ Connections ------ #
         self.pico_btn.clicked.connect(self._browse)
         self.override_btn.clicked.connect(self._override)
-
         self.render_lyt.full_radio.toggled.connect(lambda: self._render_state(self.render_lyt.full_radio))
         self.render_lyt.slice_radio.toggled.connect(lambda: self._render_state(self.render_lyt.slice_radio))
         self.render_lyt.tc_in.textChanged.connect(self._check_gui_requirements)
         self.render_lyt.tc_out.textChanged.connect(self._check_gui_requirements)
+        self.check_btn.clicked.connect(self.check)
+        self.run_btn.clicked.connect(self.run)
 
     def _browse(self):
         pico_file_name, _ = qw.QFileDialog.getOpenFileName(self,
@@ -173,13 +175,19 @@ class PicoTrack(qw.QFrame):
         if self.pico_le.text() != '':
             self.override_btn.setEnabled(True)
 
-            if self.render_lyt.length is 'Slice':
+            if self.render_lyt.length == 'Slice':
                 if self.render_lyt.tc_in.hasAcceptableInput() and self.render_lyt.tc_out.hasAcceptableInput():
-                    self.progress_btn.setEnabled(True)
+                    if self.render_lyt.tc_in.text() != self.render_lyt.tc_out.text():
+                        self.check_btn.setEnabled(True)
+                        # self.run_btn.setEnabled(True)
+                    else:
+                        self.check_btn.setEnabled(False)
                 else:
-                    self.progress_btn.setEnabled(False)
-            elif self.render_lyt.length is 'Full':
-                self.progress_btn.setEnabled(True)
+                    self.check_btn.setEnabled(False)
+                    # self.run_btn.setEnabled(False)
+            elif self.render_lyt.length == 'Full':
+                self.check_btn.setEnabled(True)
+                # self.run_btn.setEnabled(True)
 
         else:
             self.override_btn.setEnabled(False)
@@ -199,12 +207,79 @@ class PicoTrack(qw.QFrame):
             self.render_lyt.tc_out.setEnabled(True)
             self._check_gui_requirements()
 
+    def _map_values_from_gui(self):
+        """
+        Connects GUI values to the PicoFile instance
+        :return:
+        """
+        self.pico.file_path = str(self.pico_le.text())
+
+        if self.override_le.text() != '':
+            self.pico.override = str(self.override_le.text())
+
+        if self.render_lyt.start_frame_le.text() != '':
+            self.pico.start_frame = str(self.render_lyt.start_frame_le.text())
+        else:
+            self.pico.start_frame = str(self.render_lyt.start_frame_le.placeholderText())
+
+        self.pico.render_length = self.render_lyt.get_length()
+
+        if self.render_lyt.tc_in.text() != '':
+            self.pico.timecode_in = str(self.render_lyt.tc_in.text())
+
+        if self.render_lyt.tc_out.text() != '':
+            self.pico.timecode_out = str(self.render_lyt.tc_out.text())
+
+    def check(self):
+        # Connect GUI values to PicoFile instance
+        self._map_values_from_gui()
+        check_thread = PicoCheckThread(self.pico)
+
+
+        self.run_btn.setEnabled(True)
+
+    def run(self):
+        for k, v in vars(self.pico).iteritems():
+            print(k, v)
+
     def _download(self):
-        self.pico = pico_processing.PicoFile(self.pico_le.text())
+        # self.pico = CyPico.PicoFile()
         # self.completed = 0
         # while self.completed < 100:
         #     self.completed += 0.0001
         #     self.progress_bar.setValue(self.completed)
+        pass
+
+
+# ----------------------------------------------------- #
+
+class PicoCheckThread(qc.QThread):
+    def __init__(self, pico_instance):
+        super(PicoCheckThread, self).__init__()
+        self.pico_instance = pico_instance
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        # Process Shit
+        pass
+
+
+# ----------------------------------------------------- #
+
+
+class PicoRunThread(qc.QThread):
+    def __init__(self, pico_instance):
+        super(PicoRunThread, self).__init__()
+        self.pico_instance = pico_instance
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        # Process Shit
+        pass
 
 # ----------------------------------------------------- #
 
@@ -325,6 +400,10 @@ class PicoRenderLength(qw.QHBoxLayout):
         self.layout().addWidget(self.tc_in)
         self.layout().addWidget(self.tc_out)
 
+    # @property
+    def get_length(self):
+        return self.length
+
 
 # ----------------------------------------------------- #
 
@@ -334,6 +413,8 @@ class PicoFileDialog(qw.QFileDialog):
         super(PicoFileDialog, self).__init__()
         self.setFileMode(QFileDialog_FileMode=2)
         self.setFilter("Pico files (*.pico)")
+
+
 # ----------------------------------------------------- #
 
 

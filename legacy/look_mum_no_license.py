@@ -255,7 +255,7 @@ def render_file_from_input(file, reader, file_properties, bmp_dir):
 
     capture_fps = round(file_properties['fps'], 2)
     print capture_fps
-    tc_fps = 24 #round(capture_fps/2, 2)
+    tc_fps = 24  # round(capture_fps/2, 2)
 
     tc_in = Timecode(str(tc_fps), file_properties['in'])
     print tc_in
