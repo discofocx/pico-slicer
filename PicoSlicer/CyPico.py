@@ -38,7 +38,7 @@ class PicoFile(object):
         self.frame_out = None
         self.frame_zero = None
         self.frame_offset = None  # This one eventually turns into the frame index
-        self.frame_start = None
+        self.frame_start = None  # This one is not used anymore as the value comes from the GUI
         self.frame_padding = None
         self.total_frames = None
 
@@ -90,8 +90,8 @@ class PicoFile(object):
 
         # Set .pico file render first and last frame, can be full or by tc inputs
         if self.render_length == 'Slice':
-            self.timecode_in = Timecode(self.render_fps, self.timecode_in)
-            self.timecode_out = Timecode(self.render_fps, self.timecode_out)
+            self.timecode_in = Timecode(self.render_fps, str(self.timecode_in))
+            self.timecode_out = Timecode(self.render_fps, str(self.timecode_out))
             self.frame_in = (self.timecode_in.frames - self.jam_timecode.frames) * 2
             self.frame_out = (self.timecode_out.frames - self.jam_timecode.frames) * 2
 
@@ -112,10 +112,12 @@ class PicoFile(object):
         self.frame_padding = len(str(self.frame_out - self.frame_in))
         self.total_frames = self.frame_out - self.frame_in
 
-        if self.render_length == 'Slice':
-            self.frame_start = self.start_frame
-        else:
-            self.frame_start = self.frame_in - self.frame_offset
+        # No need to mess around with the start frame, it should come from the GUI
+
+        # if self.render_length == 'Slice':
+        #     self.frame_start = self.start_frame
+        # else:
+        #     self.frame_start = self.frame_in - self.frame_offset
 
         # Set output names
         if self.override is not None:
@@ -157,9 +159,22 @@ class PicoFile(object):
         render_output_name = self.output_name.replace('.pico', '')
         render_frame_in = self.frame_in
         render_frame_out = self.frame_out
-        render_tc_in = self.timecode_in
-        render_start_frame = self.frame_start
+        render_start_frame = self.start_frame
 
+        # Which Timecode are we going to render, user or file
+        if self.render_length == 'Slice':
+            render_tc = self.timecode_in
+        else:
+            render_tc = self.ref_timecode
+
+        # Check if we are starting on a sub-frame, if so, step one frame up
+
+        if render_frame_in % 2:  # If render_frame_in is a sub-frame
+            render_frame_in += 1
+            render_index += 1
+            render_tc.frames += 1
+
+        # Utility function for rotating the frame, probs, it should not be here
         def rotate_bound(image, angle):
             # grab the dimensions of the image and then determine the
             # center
@@ -184,8 +199,8 @@ class PicoFile(object):
             # perform the actual rotation and return the image
             return cv2.warpAffine(image, M, (nW, nH))
 
-        # Control counters
-        if self.frame_padding <=3:
+        # Control counters (Not really control counters anymore)
+        if self.frame_padding <= 3:
             self.frame_padding = 4
         else:
             pass
@@ -197,7 +212,7 @@ class PicoFile(object):
 
             # Manipulate the frame
             cv2.rectangle(frame, (16, 40), (220, 80), (0, 0, 0), -1)
-            cv2.putText(frame, str(render_tc_in), (20, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(frame, str(render_tc), (20, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
 
             # Rotate the frame 90 degrees
             frame = rotate_bound(frame, -90)
@@ -221,6 +236,6 @@ class PicoFile(object):
             render_index += 2
             render_frame_in += 2
             render_progress_frames += 2
-            render_tc_in.frames += 1
+            render_tc.frames += 1
             render_start_frame += 1
 

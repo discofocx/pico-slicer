@@ -325,7 +325,7 @@ class PicoRenderThread(qc.QThread):
     def run(self):
         # Process Shit
         for index, frames in enumerate(self.pico_instance.render()):
-            progress = abs(index * 100 / self.pico_instance.total_frames)
+            progress = abs(index * 100 / (self.pico_instance.total_frames / 2))
             self.render_progress.emit(progress)
         self.render_finished.emit()
 
