@@ -149,6 +149,17 @@ class PicoFile(object):
 
     def render(self):
 
+        # Because we will be modifying a lot of values, instead of operating on the attributes,
+        # we'll store what we need in local variables.
+
+        render_progress_frames = 0
+        render_index = self.frame_offset
+        render_output_name = self.output_name.replace('.pico', '')
+        render_frame_in = self.frame_in
+        render_frame_out = self.frame_out
+        render_tc_in = self.timecode_in
+        render_start_frame = self.frame_start
+
         def rotate_bound(image, angle):
             # grab the dimensions of the image and then determine the
             # center
@@ -174,41 +185,42 @@ class PicoFile(object):
             return cv2.warpAffine(image, M, (nW, nH))
 
         # Control counters
-        progress_frames = 0
-        index = self.frame_offset
-
         if self.frame_padding <=3:
             self.frame_padding = 4
         else:
             pass
 
         # Render loop
-        while self.frame_in < (self.frame_out + 2):
+        while render_frame_in < (render_frame_out + 2):
             # Load a new frame in memory
-            frame = self.file_buffer.get_image(index)
+            frame = self.file_buffer.get_image(render_index)
 
             # Manipulate the frame
             cv2.rectangle(frame, (16, 40), (220, 80), (0, 0, 0), -1)
-            cv2.putText(frame, str(self.timecode_in), (20, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(frame, str(render_tc_in), (20, 70), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
 
             # Rotate the frame 90 degrees
-            image = rotate_bound(frame, -90)
+            frame = rotate_bound(frame, -90)
 
             # Where are we going to save that new fresh frame?
-            if self.override:
-                self.output_name = self.output_name + '.{0:0>{1}}.jpg'.format(self.frame_start, self.frame_padding)
-            else:
-                self.output_name = self.output_name.replace('.pico', '.{0:0>{1}}.jpg'.format(self.frame_start,
-                                                                                             self.frame_padding))
+            image_output_name = render_output_name + '.{0:0>{1}}.jpg'.format(render_start_frame, self.frame_padding)
+
+            # if self.override:
+            #     self.output_name = self.output_name + '.{0:0>{1}}.jpg'.format(self.frame_start, self.frame_padding)
+            # else:
+            #     self.output_name = self.output_name.replace('.pico', '.{0:0>{1}}.jpg'.format(self.frame_start,
+            #                                                                                  self.frame_padding))
 
             # Save the fresh frame
-            cv2.imwrite(self.output_name, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
+            cv2.imwrite(image_output_name, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
+
+            # Yield progress
+            yield render_progress_frames
 
             # Prepare for the next loop
-            index += 2
-            self.frame_in += 2
-            progress_frames += 2
-            self.timecode_in.frames += 1
-            self.frame_start += 1
+            render_index += 2
+            render_frame_in += 2
+            render_progress_frames += 2
+            render_tc_in.frames += 1
+            render_start_frame += 1
 
-            yield progress_frames
