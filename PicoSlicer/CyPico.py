@@ -8,8 +8,12 @@ import logging
 
 import cv2
 import numpy as np
-from PyCara import PyPico
 from timecode import Timecode
+
+try:
+    from PyCara import PyPico
+except RuntimeError:
+    print('No valid CaraPost license found, render functions are disabled')
 
 
 class PicoFile(object):
@@ -153,7 +157,6 @@ class PicoFile(object):
 
         # Because we will be modifying a lot of values, instead of operating on the attributes,
         # we'll store what we need in local variables.
-
         render_progress_frames = 0
         render_index = self.frame_offset
         render_output_name = self.output_name.replace('.pico', '')

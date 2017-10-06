@@ -20,25 +20,26 @@ from PicoSlicer import CyPico
 gDIALOG = None
 gROOT = os.getcwd()
 
+
 class PicoWindow(qw.QMainWindow):
     def __init__(self):
         super(PicoWindow, self).__init__()
 
+        self.setWindowTitle('Pico Slicer 0.1')
         slicer = PicoSlicer()
         self.setCentralWidget(slicer)
 
     def __call__(self, *args, **kwargs):
         self.show()
 
+
 class PicoSlicer(qw.QDialog):
     def __init__(self):
         super(PicoSlicer, self).__init__()
-        self.setWindowTitle('Pico Slicer 0.1')
-        self.setMinimumWidth(512)
-        self.setMinimumHeight(168)
 
         # -- Attributes -- #
-        self.pico_files = list()
+        self.pico_tracks = list()
+        self.height = 216
 
         self.draw()
 
@@ -46,6 +47,12 @@ class PicoSlicer(qw.QDialog):
         self.show()
 
     def draw(self):
+
+        # - Main Window - #
+        self.setWindowTitle('Pico Slicer 0.1')
+        # self.setMinimumWidth(720)
+        # self.setMinimumHeight(self.height)
+        self.setSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum)
 
         # - Main Window Layout - #
         self.setLayout(qw.QVBoxLayout())
@@ -61,17 +68,50 @@ class PicoSlicer(qw.QDialog):
 
         main_widget = qw.QWidget()
         main_layout = qw.QVBoxLayout()
-        main_layout.setContentsMargins(2, 5, 2, 5)
+        main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.setAlignment(qc.Qt.AlignTop)
         main_widget.setLayout(main_layout)
         scroll_area.setWidget(main_widget)
 
-        new_widget = PicoTrack()
-        main_layout.addWidget(new_widget)
+        self.pico_tracks_lyt = qw.QVBoxLayout()
+        self.pico_tracks_lyt.setContentsMargins(0, 0, 0, 0)
+        self.pico_tracks_lyt.setSpacing(2)
+        self.pico_tracks_lyt.setAlignment(qc.Qt.AlignTop)
+        main_layout.addLayout(self.pico_tracks_lyt)
+
+        add_track_lyt = qw.QHBoxLayout()
+        add_track_lyt.setContentsMargins(0, 0, 0, 0)
+        add_track_lyt.setAlignment(qc.Qt.AlignRight)
+        main_layout.addLayout(add_track_lyt)
+
+        add_track_btn = qw.QPushButton()
+        add_track_btn.setText('Add Track')
+        add_track_lyt.addWidget(add_track_btn)
+
+        new_pico_track = PicoTrack()
+        new_pico_track.hide_close_button()
+        self.pico_tracks_lyt.addWidget(new_pico_track)
+        self.pico_tracks.append(new_pico_track)
 
         # ------ Footer ------ #
         footer_widget = Footer()
         self.layout().addWidget(footer_widget)
+
+        # ------ Connections ------ #
+        add_track_btn.clicked.connect(self.add)
+
+    # ---------------------------------------------- #
+
+    def add(self):
+        new_pico_track = PicoTrack()
+        self.pico_tracks_lyt.addWidget(new_pico_track)
+        self.pico_tracks.append(new_pico_track)
+
+        self.updateGeometry()
+        # self.setMinimumHeight(self.height)
+
+    def remove(self, pico_track):
+        self.pico_tracks.remove(pico_track)
 
 
 class PicoTrack(qw.QFrame):
@@ -81,6 +121,7 @@ class PicoTrack(qw.QFrame):
 
     def __init__(self):
         super(PicoTrack, self).__init__()
+        self.setFrameStyle(qw.QFrame.Panel | qw.QFrame.Raised)
         self.setLayout(qw.QVBoxLayout())
 
         # ------ Attributes ------- #
@@ -92,7 +133,7 @@ class PicoTrack(qw.QFrame):
         self._draw()
 
     def _draw(self):
-        # ------ Track Header ------ #
+        # ------ Track Splitter ------ #
         self.header = PicoTrackHeader('TRACK')
         self.layout().addWidget(self.header)
 
@@ -162,6 +203,9 @@ class PicoTrack(qw.QFrame):
         self.render_lyt.tc_out.textChanged.connect(self._check_gui_requirements)
         self.check_btn.clicked.connect(self.check)
         self.run_btn.clicked.connect(self.render_sequence)
+
+    def hide_close_button(self, value=True):
+        self.header.close_btn.setVisible(not(value))
 
     def _browse(self):
         pico_file_name, _ = qw.QFileDialog.getOpenFileName(self,
@@ -336,7 +380,7 @@ class PicoTrackHeader(qw.QWidget):
     def __init__(self, text=None, shadow=True, color=(150, 150, 150)):
         super(PicoTrackHeader, self).__init__()
 
-        self.setMinimumHeight(2)
+        self.setMinimumHeight(20)
         self.setLayout(qw.QHBoxLayout())
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().setSpacing(0)
@@ -385,6 +429,14 @@ class PicoTrackHeader(qw.QWidget):
         second_line = qw.QFrame()
         second_line.setFrameStyle(qw.QFrame.HLine)
         self.layout().addWidget(second_line)
+
+        self.layout().addSpacing(8)
+
+        self.close_btn = qw.QPushButton()
+        self.close_btn.setText('X')
+        self.close_btn.setFixedWidth(20)
+        self.close_btn.setFixedHeight(20)
+        self.layout().addWidget(self.close_btn)
 
         second_line.setStyleSheet(style_sheet)
 
