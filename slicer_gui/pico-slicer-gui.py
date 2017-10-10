@@ -13,6 +13,7 @@ import sys
 import PyQt5.QtCore as qc
 import PyQt5.QtGui as qg
 import PyQt5.QtWidgets as qw
+import qdarkstyle
 
 from PicoSlicer import CyPico
 
@@ -33,13 +34,16 @@ class PicoWindow(qw.QMainWindow):
         self.show()
 
 
+# ----------------------------------------------------- #
+
+
 class PicoSlicer(qw.QDialog):
     def __init__(self):
         super(PicoSlicer, self).__init__()
 
         # -- Attributes -- #
         self.pico_tracks = list()
-        self.height = 216
+        self.height = 720
 
         self.draw()
 
@@ -47,11 +51,10 @@ class PicoSlicer(qw.QDialog):
         self.show()
 
     def draw(self):
-
         # - Main Window - #
         self.setWindowTitle('Pico Slicer 0.1')
         # self.setMinimumWidth(720)
-        # self.setMinimumHeight(self.height)
+        self.setMinimumHeight(self.height)
         self.setSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum)
 
         # - Main Window Layout - #
@@ -66,21 +69,22 @@ class PicoSlicer(qw.QDialog):
         scroll_area.setHorizontalScrollBarPolicy(qc.Qt.ScrollBarAlwaysOff)
         self.layout().addWidget(scroll_area)
 
-        main_widget = qw.QWidget()
+        self.main_widget = qw.QWidget()
         main_layout = qw.QVBoxLayout()
-        main_layout.setContentsMargins(2, 2, 2, 2)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(2)
         main_layout.setAlignment(qc.Qt.AlignTop)
-        main_widget.setLayout(main_layout)
-        scroll_area.setWidget(main_widget)
+        self.main_widget.setLayout(main_layout)
+        scroll_area.setWidget(self.main_widget)
 
         self.pico_tracks_lyt = qw.QVBoxLayout()
-        self.pico_tracks_lyt.setContentsMargins(0, 0, 0, 0)
+        self.pico_tracks_lyt.setContentsMargins(8, 8, 8, 8)
         self.pico_tracks_lyt.setSpacing(2)
         self.pico_tracks_lyt.setAlignment(qc.Qt.AlignTop)
         main_layout.addLayout(self.pico_tracks_lyt)
 
         add_track_lyt = qw.QHBoxLayout()
-        add_track_lyt.setContentsMargins(0, 0, 0, 0)
+        add_track_lyt.setContentsMargins(8, 2, 8, 2)
         add_track_lyt.setAlignment(qc.Qt.AlignRight)
         main_layout.addLayout(add_track_lyt)
 
@@ -92,6 +96,23 @@ class PicoSlicer(qw.QDialog):
         new_pico_track.hide_close_button()
         self.pico_tracks_lyt.addWidget(new_pico_track)
         self.pico_tracks.append(new_pico_track)
+
+        # ------ Overall Buttons ------ #
+        overall_lyt = qw.QHBoxLayout()
+        overall_lyt.setContentsMargins(4, 4, 4, 4)
+        overall_lyt.setSpacing(4)
+        overall_lyt.setAlignment(qc.Qt.AlignRight)
+        self.layout().addLayout(overall_lyt)
+
+        self.check_all_btn = qw.QPushButton()
+        self.check_all_btn.setText('Check All')
+        self.check_all_btn.setEnabled(False)
+        overall_lyt.addWidget(self.check_all_btn)
+
+        self.run_all_btn = qw.QPushButton()
+        self.run_all_btn.setText('Run All')
+        self.run_all_btn.setEnabled(False)
+        overall_lyt.addWidget(self.run_all_btn)
 
         # ------ Footer ------ #
         footer_widget = Footer()
@@ -106,18 +127,35 @@ class PicoSlicer(qw.QDialog):
         new_pico_track = PicoTrack()
         self.pico_tracks_lyt.addWidget(new_pico_track)
         self.pico_tracks.append(new_pico_track)
+        new_pico_track.remove_track.connect(self.remove)
+        new_pico_track.setFixedHeight(0)
+        new_pico_track._animate_expand(True)
 
-        self.updateGeometry()
-        # self.setMinimumHeight(self.height)
+    # ---------------------------------------------- #
 
+    @qc.pyqtSlot(object)
     def remove(self, pico_track):
+        pico_track.delete_track.connect(self._delete)
         self.pico_tracks.remove(pico_track)
+        pico_track._animate_expand(False)
+        # print('Track removed')
+
+    @qc.pyqtSlot(object)
+    def _delete(self, pico_track):
+        self.pico_tracks_lyt.removeWidget(pico_track)
+        pico_track.animation = None
+        pico_track.setFrameStyle(qw.QFrame.Plain | qw.QFrame.NoFrame)
+        pico_track.deleteLater()
+        # print('Track Deleted')
+
+
+# ----------------------------------------------------- #
 
 
 class PicoTrack(qw.QFrame):
-
     # ------ Signals ------- #
-    # is_timecode_valid = qc.pyqtSignal(bool)
+    remove_track = qc.pyqtSignal(object)
+    delete_track = qc.pyqtSignal(object)
 
     def __init__(self):
         super(PicoTrack, self).__init__()
@@ -128,6 +166,7 @@ class PicoTrack(qw.QFrame):
         self.pico = CyPico.PicoFile()
         self.check_thread = None
         self.render_thread = None
+        self.animation = None
 
         # ------ GUI ------ #
         self._draw()
@@ -203,9 +242,53 @@ class PicoTrack(qw.QFrame):
         self.render_lyt.tc_out.textChanged.connect(self._check_gui_requirements)
         self.check_btn.clicked.connect(self.check)
         self.run_btn.clicked.connect(self.render_sequence)
+        self.header.close_btn.clicked.connect(self._remove_track)
+
+    # ---------------------------------------------------------- #
+
+    def _animate_expand(self, value):
+        size_anim = qc.QPropertyAnimation(self, 'geometry')
+
+        geometry = self.geometry()
+        width = geometry.width()
+        x, y, _, _ = geometry.getCoords()
+
+        size_start = qc.QRect(x, y, width, int(not value) * 180)
+        size_end = qc.QRect(x, y, width, value * 180)
+
+        size_anim.setStartValue(size_start)
+        size_anim.setEndValue(size_end)
+        size_anim.setDuration(200)
+
+        size_anim_curve = qc.QEasingCurve()
+        if value:
+            size_anim_curve.setType(qc.QEasingCurve.InQuad)
+        else:
+            size_anim_curve.setType(qc.QEasingCurve.OutQuad)
+        size_anim.setEasingCurve(size_anim_curve)
+
+        self.animation = size_anim
+        size_anim.valueChanged.connect(self._force_resize)
+
+        if not value:
+            size_anim.finished.connect(self._delete_widget)
+        size_anim.start(qc.QAbstractAnimation.DeleteWhenStopped)
+
+    def _force_resize(self, new_height):
+        self.setFixedHeight(new_height.height())
+
+    # ---------------------------------------------------------- #
+
+    def _remove_track(self):
+        self.remove_track.emit(self)
+
+    def _delete_widget(self):
+        self.delete_track.emit(self)
+
+    # ---------------------------------------------------------- #
 
     def hide_close_button(self, value=True):
-        self.header.close_btn.setVisible(not(value))
+        self.header.close_btn.setVisible(not value)
 
     def _browse(self):
         pico_file_name, _ = qw.QFileDialog.getOpenFileName(self,
@@ -329,8 +412,8 @@ class PicoTrack(qw.QFrame):
 
 # ----------------------------------------------------- #
 
-class PicoCheckThread(qc.QThread):
 
+class PicoCheckThread(qc.QThread):
     # -- Signals -- #
     is_timecode_valid = qc.pyqtSignal(bool)
 
@@ -354,7 +437,6 @@ class PicoCheckThread(qc.QThread):
 
 
 class PicoRenderThread(qc.QThread):
-
     # -- Signals -- #
     render_progress = qc.pyqtSignal(int)
     render_finished = qc.pyqtSignal()
@@ -372,6 +454,7 @@ class PicoRenderThread(qc.QThread):
             progress = abs(index * 100 / (self.pico_instance.total_frames / 2))
             self.render_progress.emit(progress)
         self.render_finished.emit()
+
 
 # ----------------------------------------------------- #
 
@@ -440,7 +523,7 @@ class PicoTrackHeader(qw.QWidget):
 
         second_line.setStyleSheet(style_sheet)
 
-    # ----------------------------------------------------- #
+        # ----------------------------------------------------- #
 
 
 # ----------------------------------------------------- #
@@ -533,11 +616,14 @@ class Footer(qw.QWidget):
         self.layout().addWidget(self.lbl)
 
 
+# ----------------------------------------------------- #
+
 def run():
     """
     Main execution
     """
     app = qw.QApplication(sys.argv)
+    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     slicer = PicoWindow()
     slicer()
 
