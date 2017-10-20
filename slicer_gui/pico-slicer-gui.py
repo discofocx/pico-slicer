@@ -106,12 +106,12 @@ class PicoSlicer(qw.QDialog):
 
         self.check_all_btn = qw.QPushButton()
         self.check_all_btn.setText('Check All')
-        self.check_all_btn.setEnabled(False)
+        self.check_all_btn.setEnabled(True)
         overall_lyt.addWidget(self.check_all_btn)
 
         self.run_all_btn = qw.QPushButton()
         self.run_all_btn.setText('Run All')
-        self.run_all_btn.setEnabled(False)
+        self.run_all_btn.setEnabled(True)
         overall_lyt.addWidget(self.run_all_btn)
 
         # ------ Footer ------ #
@@ -120,6 +120,8 @@ class PicoSlicer(qw.QDialog):
 
         # ------ Connections ------ #
         add_track_btn.clicked.connect(self.add)
+        self.check_all_btn.clicked.connect(self.check_all)
+        self.run_all_btn.clicked.connect(self.render_all)
 
     # ---------------------------------------------- #
 
@@ -130,6 +132,16 @@ class PicoSlicer(qw.QDialog):
         new_pico_track.remove_track.connect(self.remove)
         new_pico_track.setFixedHeight(0)
         new_pico_track._animate_expand(True)
+
+    # ---------------------------------------------- #
+
+    def check_all(self):
+        for track in self.pico_tracks:
+            track.check()
+
+    def render_all(self):
+        for track in self.pico_tracks:
+            track.render_sequence()
 
     # ---------------------------------------------- #
 
@@ -164,6 +176,7 @@ class PicoTrack(qw.QFrame):
 
         # ------ Attributes ------- #
         self.pico = CyPico.PicoFile()
+        self.is_valid = False
         self.check_thread = None
         self.render_thread = None
         self.animation = None
@@ -375,6 +388,8 @@ class PicoTrack(qw.QFrame):
         if self.render_lyt.tc_out.text() != '':
             self.pico.timecode_out = str(self.render_lyt.tc_out.text())
 
+    # ---------------------------------------------------------- #
+
     def check(self):
         # Connect GUI values to PicoFile instance
         self._map_values_from_gui()
@@ -384,19 +399,24 @@ class PicoTrack(qw.QFrame):
 
     def render_sequence(self):
         # Render sequence
-        self.render_thread = PicoRenderThread(self.pico)
-        self.render_thread.render_progress.connect(self._update_progress_bar)
-        self.render_thread.render_finished.connect(self._done)
-        self.render_thread.start()
+        if self.is_valid:
+            self.render_thread = PicoRenderThread(self.pico)
+            self.render_thread.render_progress.connect(self._update_progress_bar)
+            self.render_thread.render_finished.connect(self._done)
+            self.render_thread.start()
+        else:
+            pass
 
     # ------ Slot Definitions ------ #
 
     @qc.pyqtSlot(bool)
     def _test_result(self, result):
         if result:
+            self.is_valid = True
             self.run_btn.setEnabled(True)
             print('Timecode is valid')
         else:
+            self.is_valid = False
             self.run_btn.setEnabled(False)
             print('Timecode is not valid')
 
