@@ -13,7 +13,7 @@ import sys
 import PyQt5.QtCore as qc
 import PyQt5.QtGui as qg
 import PyQt5.QtWidgets as qw
-import qdarkstyle
+# import qdarkstyle
 
 from PicoSlicer import CyPico
 
