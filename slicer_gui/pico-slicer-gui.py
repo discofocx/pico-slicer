@@ -352,6 +352,12 @@ class PicoTrack(qw.QFrame):
 
     def _render_state(self, b):
         if b.text() == 'Full' and b.isChecked():
+            if self.is_valid:
+                self.is_valid = False
+                self.run_btn.setEnabled(False)
+            else:
+                pass
+
             self.render_lyt.length = 'Full'
             print(self.render_lyt.length)
             self.render_lyt.tc_in.setEnabled(False)
@@ -359,6 +365,12 @@ class PicoTrack(qw.QFrame):
             self._check_gui_requirements()
 
         elif b.text() == 'Slice' and b.isChecked():
+            if self.is_valid:
+                self.is_valid = False
+                self.run_btn.setEnabled(False)
+            else:
+                pass
+
             self.render_lyt.length = 'Slice'
             print(self.render_lyt.length)
             self.render_lyt.tc_in.setEnabled(True)

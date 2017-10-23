@@ -131,7 +131,7 @@ class PicoFile(object):
 
     def report(self):
         for k, v in vars(self).iteritems():
-            print(k, v)
+            print('Check thread report: {0} - {1}'.format(k, v))
 
     def validate_timecode_input(self):
         """
