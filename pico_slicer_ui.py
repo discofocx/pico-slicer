@@ -656,11 +656,10 @@ def run():
     Main execution
     """
     app = qw.QApplication(sys.argv)
-    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     slicer = PicoWindow()
     slicer()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
-
-run()
+if __name__ == '__main__':
+    run()
