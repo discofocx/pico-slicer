@@ -9,7 +9,10 @@ import datetime
 import subprocess
 import logging
 
-from PyCara import PyPico
+try:
+    from PyCara import PyPico
+except ModuleNotFoundError:
+    print('Could not find PyCara installed, the app wont work as expected.')
 from timecode import Timecode
 import cv2
 import numpy
@@ -55,7 +58,7 @@ class DirtyPicoEncoder(object):
                 if name.endswith('.pico') and not os.path.isfile(path + '\\' + name.replace('.pico', '.mov')):
                     lfile = os.path.join(path, name)
                     self.file_queue.append(lfile)
-                    print lfile
+                    print(lfile)
 
         if not len(self.file_queue):
             print('\nZero pico files could be found, try a different directory, bye.')
@@ -78,7 +81,7 @@ class DirtyPicoEncoder(object):
         else:
             print('Starting "by timecode selects" processing')
             self.cue_in, self.cue_out = self.interface.ask_for_timecode()
-            print self.cue_in, self.cue_out
+            print(self.cue_in, self.cue_out)
 
 
 class CmdUserInterface(object):

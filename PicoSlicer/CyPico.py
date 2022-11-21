@@ -14,6 +14,8 @@ try:
     from PyCara import PyPico
 except RuntimeError:
     print('No valid CaraPost license found, render functions are disabled')
+except ModuleNotFoundError:
+    print('Could not find PyCara installed')
 
 
 class PicoFile(object):

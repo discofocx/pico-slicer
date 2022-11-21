@@ -9,7 +9,10 @@ import datetime
 import subprocess
 import logging
 
-from PyCara import PyPico
+try:
+    from PyCara import PyPico
+except ModuleNotFoundError:
+    print('Could not find PyCara installed, the app wont work as exxpected')
 from timecode import Timecode
 import cv2
 import numpy as np
@@ -254,24 +257,24 @@ def render_file_from_input(file, reader, file_properties, bmp_dir):
     # Figure out and set-up the correct timecode TODO So far timecode is somewhat consistent, need to elaborate on this
 
     capture_fps = round(file_properties['fps'], 2)
-    print capture_fps
+    print(capture_fps)
     tc_fps = 24  # round(capture_fps/2, 2)
 
     tc_in = Timecode(str(tc_fps), file_properties['in'])
-    print tc_in
+    print(tc_in)
     tc_out = Timecode(str(tc_fps), file_properties['out'])
-    print tc_out
+    print(tc_out)
 
     base_tc = Timecode(str(tc_fps), file_properties['tc'])
-    print base_tc
+    print(base_tc)
 
     # How many frames are we rendering? This is the timecode out frames - timecode in frames
     frames_in = (tc_in.frames - base_tc.frames) * 2
-    print frames_in
+    print(frames_in)
     frames_out = (tc_out.frames - base_tc.frames) * 2
-    print frames_out
+    print(frames_out)
     total_frames = frames_out - frames_in
-    print total_frames
+    print(total_frames)
 
     # Control counters
     progress_frames = 0
@@ -387,13 +390,13 @@ if __name__ == '__main__':
             if name.endswith('.pico') and not os.path.isdir(path + '\\' + name.replace('.pico', '_bmp')):
                 file = os.path.join(path, name)
                 queue.append(file)
-                print file
+                print(file)
 
     if not len(queue):
         print('\nZero pico files could be found, try a different directory, bye.')
     else:
-        print '\n{0} Pico file(s) have been found for encoding, do you want to proceed?\n' \
-              'Yes (1), No (0)'.format(len(queue))
+        print('\n{0} Pico file(s) have been found for encoding, do you want to proceed?\n' \
+              'Yes (1), No (0)'.format(len(queue)))
 
         while True:
             user = input()
@@ -442,7 +445,7 @@ if __name__ == '__main__':
                         encode_status = encode_file(file, file_properties, bmp_dir)
 
                         if encode_status:
-                            print 'Finished {0} in {1} seconds'.format(file.replace('.pico','.mov'), (round(time.time() - start_time)))
+                            print('Finished {0} in {1} seconds'.format(file.replace('.pico','.mov'), (round(time.time() - start_time))))
                             logging.info('File {0} of {1} {2}'.format(process_index, len(queue), file))
                             process_index += 1
 
@@ -544,4 +547,4 @@ if __name__ == '__main__':
                         process_index += 1
 
         else:
-            print'Abort'
+            print('Abort')

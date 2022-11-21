@@ -10,9 +10,9 @@ __status__ = 'Prototype'
 import os
 import sys
 
-import PyQt5.QtCore as qc
-import PyQt5.QtGui as qg
-import PyQt5.QtWidgets as qw
+import PySide6.QtCore as qc
+import PySide6.QtGui as qg
+import PySide6.QtWidgets as qw
 import qdarkstyle
 
 from PicoSlicer import CyPico
@@ -145,14 +145,14 @@ class PicoSlicer(qw.QDialog):
 
     # ---------------------------------------------- #
 
-    @qc.pyqtSlot(object)
+    @qc.Slot(object)
     def remove(self, pico_track):
         pico_track.delete_track.connect(self._delete)
         self.pico_tracks.remove(pico_track)
         pico_track._animate_expand(False)
         # print('Track removed')
 
-    @qc.pyqtSlot(object)
+    @qc.Slot(object)
     def _delete(self, pico_track):
         self.pico_tracks_lyt.removeWidget(pico_track)
         pico_track.animation = None
@@ -166,8 +166,8 @@ class PicoSlicer(qw.QDialog):
 
 class PicoTrack(qw.QFrame):
     # ------ Signals ------- #
-    remove_track = qc.pyqtSignal(object)
-    delete_track = qc.pyqtSignal(object)
+    remove_track = qc.Signal(object)
+    delete_track = qc.Signal(object)
 
     def __init__(self):
         super(PicoTrack, self).__init__()
@@ -260,7 +260,8 @@ class PicoTrack(qw.QFrame):
     # ---------------------------------------------------------- #
 
     def _animate_expand(self, value):
-        size_anim = qc.QPropertyAnimation(self, 'geometry')
+        # size_anim = qc.QPropertyAnimation(self, 'geometry')
+        size_anim = qc.QPropertyAnimation(self)
 
         geometry = self.geometry()
         width = geometry.width()
@@ -421,7 +422,7 @@ class PicoTrack(qw.QFrame):
 
     # ------ Slot Definitions ------ #
 
-    @qc.pyqtSlot(bool)
+    @qc.Slot(bool)
     def _test_result(self, result):
         if result:
             self.is_valid = True
@@ -432,11 +433,11 @@ class PicoTrack(qw.QFrame):
             self.run_btn.setEnabled(False)
             print('Timecode is not valid')
 
-    @qc.pyqtSlot(int)
+    @qc.Slot(int)
     def _update_progress_bar(self, progress):
         self.progress_bar.setValue(progress)
 
-    @qc.pyqtSlot()
+    @qc.Slot()
     def _done(self):
         print('Render has finished')
         self.progress_bar.setValue(0)
@@ -447,7 +448,7 @@ class PicoTrack(qw.QFrame):
 
 class PicoCheckThread(qc.QThread):
     # -- Signals -- #
-    is_timecode_valid = qc.pyqtSignal(bool)
+    is_timecode_valid = qc.Signal(bool)
 
     def __init__(self, pico_instance):
         super(PicoCheckThread, self).__init__()
@@ -470,8 +471,8 @@ class PicoCheckThread(qc.QThread):
 
 class PicoRenderThread(qc.QThread):
     # -- Signals -- #
-    render_progress = qc.pyqtSignal(int)
-    render_finished = qc.pyqtSignal()
+    render_progress = qc.Signal(int)
+    render_finished = qc.Signal()
 
     def __init__(self, pico_instance):
         super(PicoRenderThread, self).__init__()
@@ -531,7 +532,7 @@ class PicoTrackHeader(qw.QWidget):
 
         text_width = qg.QFontMetrics(font)
         # text_width.inFont(font)
-        width = text_width.width(text) + 16
+        width = text_width.maxWidth() + 16
 
         label = qw.QLabel()
         label.setText(text)
@@ -570,7 +571,7 @@ class PicoRenderLength(qw.QHBoxLayout):
 
         # -- Attributes -- #
         self.length = 'Full'  # Default behaviour
-        self.tc_reg_ex = qc.QRegExp('^(?:(?:[0-1][0-9]|[0-2][0-3]):)(?:[0-5][0-9]:){2}(?:[0-2][0-9])$')
+        self.tc_reg_ex = qc.QRegularExpression('^(?:(?:[0-1][0-9]|[0-2][0-3]):)(?:[0-5][0-9]:){2}(?:[0-2][0-9])$')
 
         # -- Draw -- #
         self._home()
@@ -597,13 +598,13 @@ class PicoRenderLength(qw.QHBoxLayout):
         self.tc_in = qw.QLineEdit()
         self.tc_in.setEnabled(False)
         self.tc_in.setPlaceholderText('TC in...')
-        in_le_validator = qg.QRegExpValidator(self.tc_reg_ex, self.tc_in)
+        in_le_validator = qg.QRegularExpressionValidator(self.tc_reg_ex, self.tc_in)
         self.tc_in.setValidator(in_le_validator)
 
         self.tc_out = qw.QLineEdit()
         self.tc_out.setEnabled(False)
         self.tc_out.setPlaceholderText('TC out...')
-        out_le_validator = qg.QRegExpValidator(self.tc_reg_ex, self.tc_out)
+        out_le_validator = qg.QRegularExpressionValidator(self.tc_reg_ex, self.tc_out)
         self.tc_out.setValidator(out_le_validator)
 
         self.layout().addWidget(start_frame_lbl)
