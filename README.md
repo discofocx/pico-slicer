@@ -12,14 +12,18 @@ You can pass a timecode range to only render what you need!
 
 [project-status]: https://img.shields.io/badge/status-life%20support-important.svg
 [type]: https://img.shields.io/badge/type-desktop%20ui-blue.svg
-[domain]: https://img.shields.io/badge/domain-data%20acquisition-pink.svg
-[release]: https://img.shields.io/badge/release-5.0.7-brightgreen.svg
+[domain]: https://img.shields.io/badge/domain-face%20mocap-pink.svg
+[release]: https://img.shields.io/badge/release-unreleased-orange.svg
 
 Requirements
 ------------
+Pico-Slicer needs [PyCara](https://www.vicon.com/software/pycara/) installed 
 
 Usage
 -----
+```
+python3 pico_slicer_ui.py
+```
 
 Support
 -------
